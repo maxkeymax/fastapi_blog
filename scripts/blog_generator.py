@@ -27,7 +27,7 @@ def blog_generator(num_posts: int) -> Generator[dict, None, None]:
         }
 
 
-def save_blog_to_db(blog_data: dict, auth_token: str = None) -> None:
+def save_blog_to_db(blog_data: dict, auth_token: str = None) -> bool:
     headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
     try:
         response = requests.post(
@@ -56,9 +56,9 @@ def main():
     for blog in blogs:
         save_blog_to_db(blog, auth_token)
         count += 1
-        print(f'Прошло времени: {(time.perf_counter() - start_time):.2f} секунд')
+        print(f'Прошло времени: {(time.perf_counter() - start_time):.2f} сек')
     
-    print(f'Всего прошло времени: {(time.perf_counter() - start_time):.2f} секунд')
+    print(f'Всего прошло времени: {(time.perf_counter() - start_time):.2f} сек')
     print(f'Всего постов сохранено: {count}')
 
 
