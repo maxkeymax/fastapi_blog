@@ -4,13 +4,15 @@ from typing import Generator, List
 import uuid
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from db_operations import clear_blogs_database
+from blog.schemas import BlogBase
+import multiprocessing
 
 # Константы для API
 API_BASE_URL = "http://localhost:8000"
 BLOG_ENDPOINT = f"{API_BASE_URL}/blog"
 LOGIN_ENDPOINT = f"{API_BASE_URL}/login"
 
-
+processes_quantity = multiprocessing.cpu_count()
 
 def get_auth_token():
     auth_data = {
@@ -22,29 +24,31 @@ def get_auth_token():
     return auth_token
 
 
-def blog_generator(num_posts: int) -> List[dict]:
-    return [
-        {
-            "title": str(uuid.uuid4()),
-            "body": str(uuid.uuid4())
-        }
-        for _ in range(num_posts)
-    ]
+def blog_generator() -> BlogBase:
+    title = str(uuid.uuid4())
+    print(f'Генерация поста: {title}')
+    time.sleep(0.1)
+    return BlogBase(
+        title=title,
+        body=str(uuid.uuid4())
+    )
 
 
-def save_blog_to_db(blog_data: dict, auth_token: str = None) -> bool:
+def save_blog_to_db(blog_data: BlogBase, auth_token: str = None) -> bool:
     headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
     try:
+        blog_dict = blog_data.model_dump()
+        
         response = requests.post(
             BLOG_ENDPOINT,
             headers=headers,
-            json=blog_data
+            json=blog_dict
         )
         if response.status_code != 201:
-            print(f"Failed to save blog: {blog_data}")
+            print(f"Failed to save blog: {blog_data.title}")
             return False
         else:
-            print(f"Blog saved: {blog_data}")
+            print(f"Blog saved: {blog_data.title}")
         return True
     except Exception as e:
         print(f"Error saving blog: {e}")
@@ -53,12 +57,8 @@ def save_blog_to_db(blog_data: dict, auth_token: str = None) -> bool:
 
 def main():
     clear_blogs_database()
-    
     blogs_quantity = 50
-    processes_quantity = 4
     threads_quantity = 10
-    chunk_size = blogs_quantity // processes_quantity
-    remainder = blogs_quantity % processes_quantity
     start_time = time.perf_counter()
     auth_token = get_auth_token()
     
@@ -66,13 +66,13 @@ def main():
     blogs = []
     
     with ProcessPoolExecutor(max_workers=processes_quantity) as executor:
-        futures = []
-        for i in range(processes_quantity):
-            current_chunk_size = chunk_size + (1 if i < remainder else 0)
-            futures.append(executor.submit(blog_generator, current_chunk_size))
+        futures = [
+            executor.submit(blog_generator)
+            for _ in range(blogs_quantity)
+        ]
 
         for future in futures:
-            blogs.extend(future.result())
+            blogs.append(future.result())
             
     print(f'Окончание генерации постов, '
           f'прошло времени: {(time.perf_counter() - start_time):.2f} сек'
