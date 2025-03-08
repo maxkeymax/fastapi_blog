@@ -48,7 +48,7 @@ def save_blog_to_db(blog_data: BlogBase, auth_token: str = None) -> bool:
             print(f"Ошибка сохранения блога: {blog_data.title}")
             return False
         else:
-            print(f"Блог сохранен: {blog_data.title}")
+            print(f"**Блог сохранен: {blog_data.title}**")
         return True
     except Exception as e:
         print(f"Ошибка сохранения блога: {e}")
@@ -58,45 +58,40 @@ def save_blog_to_db(blog_data: BlogBase, auth_token: str = None) -> bool:
 def main():
     clear_blogs_database()
     blogs_quantity = 50
-    threads_quantity = 10
+    threads_quantity = 20
     start_time = time.perf_counter()
     auth_token = get_auth_token()
     
-    print(f'Начало генерации блогов в количестве {blogs_quantity}')
+    manager = multiprocessing.Manager()
+    blog_queue = manager.Queue()
+    
+    print(f'Начало генерации и сохранения блогов в количестве {blogs_quantity}')
     blogs = []
     
-    with ProcessPoolExecutor(max_workers=processes_quantity) as executor:
+    with ThreadPoolExecutor(max_workers=threads_quantity) as thread_executor:
         futures = [
-            executor.submit(blog_generator)
+            thread_executor.submit(lambda: save_blog_to_db(blog_queue.get(), auth_token))
             for _ in range(blogs_quantity)
         ]
+                
+        with ProcessPoolExecutor(max_workers=processes_quantity) as process_executor:
+            futures = [
+                process_executor.submit(blog_queue.put, blog_generator())
+                for _ in range(blogs_quantity)
+            ]
 
+            for future in futures:
+                blogs.append(future.result())
+        
+        for _ in range(threads_quantity):
+            blog_queue.put(None)
+        
         for future in futures:
-            blogs.append(future.result())
-            
-    print(f'Окончание генерации блогов, '
+            future.result()
+        
+    print(f'Окончание генерации и сохранения блогов, '
           f'прошло времени: {(time.perf_counter() - start_time):.2f} сек'
     )
     
-    print('*' * 20)
-    print(f'Начало сохранения блогов в базу данных')
-    start_time = time.perf_counter()
-    
-    with ThreadPoolExecutor(max_workers=threads_quantity) as executor:
-        futures = []
-        for blog in blogs:
-            futures.append(executor.submit(save_blog_to_db, blog, auth_token))
-
-        saved_count = 0
-        for future in futures:
-            if future.result():
-                saved_count += 1
-    
-    print(f'Окончание сохранения блогов, '
-          f'прошло времени: {(time.perf_counter() - start_time):.2f} сек'
-    )
-    print(f'Успешно сохранено блогов: {saved_count} из {blogs_quantity}')
-
-
 if __name__ == "__main__":
     main()

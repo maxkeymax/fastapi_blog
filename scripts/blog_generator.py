@@ -36,13 +36,13 @@ def save_blog_to_db(blog_data: dict, auth_token: str = None) -> bool:
             json=blog_data
         )
         if response.status_code != 201:
-            print(f"Failed to save blog: {blog_data}")
+            print(f"Ошибка сохранения блога: {blog_data}")
             return False
         else:
-            print(f"Blog saved: {blog_data}")
+            print(f"Блог сохранен: {blog_data}")
         return True
     except Exception as e:
-        print(f"Error saving blog: {e}")
+        print(f"Ошибка сохранения блога: {e}")
         return False
 
 
