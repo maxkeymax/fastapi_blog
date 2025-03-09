@@ -2,8 +2,7 @@ import time
 import uuid
 import asyncio
 import multiprocessing
-from typing import Generator, List
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 import requests
 import aiohttp
@@ -18,7 +17,7 @@ LOGIN_ENDPOINT = f"{API_BASE_URL}/login"
 
 processes_quantity = multiprocessing.cpu_count()
 
-def get_auth_token():
+def get_auth_token() -> str:
     auth_data = {
         "username": "user_3@example.com",
         "password": "user_3"
@@ -28,7 +27,7 @@ def get_auth_token():
     return auth_token
 
 
-def blog_generator(n, queue):
+def blog_generator(n: int, queue: multiprocessing.Queue) -> None:
     for _ in range(n):
         title = str(uuid.uuid4())
         print(f'Генерация блога: {title}')
@@ -73,7 +72,12 @@ async def main():
     loop = asyncio.get_running_loop()
     
     with ProcessPoolExecutor(max_workers=processes_quantity) as executor:
-        loop.run_in_executor(executor, blog_generator, blogs_quantity, blog_queue)
+        loop.run_in_executor(
+            executor,
+            blog_generator,
+            blogs_quantity,
+            blog_queue
+        )
         
         async with aiohttp.ClientSession() as session:
             tasks = []
@@ -82,16 +86,20 @@ async def main():
                 if blog is None:
                     break
                 blogs.append(blog)
-                task = asyncio.create_task(save_blog_to_db_async(blog, session, auth_token))
+                task = asyncio.create_task(save_blog_to_db_async(
+                    blog,
+                    session,
+                    auth_token
+                ))
                 tasks.append(task)
 
             await asyncio.gather(*tasks)
             
-    
     print(f'Окончание генерации и сохранения блогов, '
           f'прошло времени: {(time.perf_counter() - start_time):.2f} сек'
     )
     print(f'Успешно сохранено блогов: {len(blogs)} из {blogs_quantity}')
+
 
 if __name__ == "__main__":
     asyncio.run(main())
