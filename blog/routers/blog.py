@@ -24,7 +24,6 @@ def create(request: schemas.Blog, db: Session = Depends(get_db),
     return blog.create(request, db)
     
 
-
 @router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete(id: int, db: Session = Depends(get_db),
         current_user: schemas.User = Depends(oauth2.get_current_user)):
