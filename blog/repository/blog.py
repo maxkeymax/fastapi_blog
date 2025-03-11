@@ -1,49 +1,56 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from .. import models, schemas
 
 
-def get_all(db: Session):
-    blogs = db.query(models.Blog).all()
-    return blogs
+async def get_all(db: AsyncSession):
+    result = await db.execute(models.Blog.select())
+    return result.scalars().all()
 
-def create(request: schemas.Blog, db: Session):
+async def create(request: schemas.Blog, db: AsyncSession):
     new_blog = models.Blog(title=request.title, body=request.body, user_id=1)
     db.add(new_blog)
-    db.commit()
-    db.refresh(new_blog)
+    await db.commit()
+    await db.refresh(new_blog)
     return new_blog
 
-def delete(id, db: Session):
-    blog = db.query(models.Blog).filter(models.Blog.id == id)
-   
-    if not blog.first():
+async def delete(id, db: AsyncSession):
+    result = await db.execute(
+        models.Blog.select().where(models.Blog.id == id)
+    )
+    blog = result.scalars().first()
+    if not blog:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Blog with id {id} not found'
         )
-    
-    blog.delete(synchronize_session=False)
-    db.commit()
+    await db.delete(blog)
+    await db.commit()
     return 'done'
 
-def update(id, request: schemas.Blog, db: Session):
-    blog = db.query(models.Blog).filter(models.Blog.id == id)
-    
-    if not blog.first():
+async def update(id, request: schemas.Blog, db: AsyncSession):
+    result = await db.execute(
+        models.Blog.select().where(models.Blog.id == id)
+    )
+    blog = result.scalars().first()
+    if not blog:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Blog with id {id} not found'
         )
-    
     blog.update(request.model_dump())
-    db.commit()
+    await db.commit()
     return 'updated'
 
-def show(id, db: Session):
-    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
+async def show(id, db: AsyncSession):
+    result = await db.execute(
+        models.Blog.select().where(models.Blog.id == id)
+    )
+    blog = result.scalars().first()
     if not blog:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'Blog with id {id} is not available')
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Blog with id {id} is not available'
+        )
     return blog
