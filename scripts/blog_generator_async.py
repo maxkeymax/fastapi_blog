@@ -19,8 +19,8 @@ processes_quantity = multiprocessing.cpu_count()
 
 def get_auth_token() -> str:
     auth_data = {
-        "username": "user_3@example.com",
-        "password": "user_3"
+        "username": "user_1@example.com",
+        "password": "user_1"
     }
     auth_response = requests.post(LOGIN_ENDPOINT, data=auth_data)
     auth_token = auth_response.json().get("access_token")
