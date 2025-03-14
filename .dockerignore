@@ -1,0 +1,13 @@
+# Игнорируем папки
+__pycache__/
+venv/
+.vscode/
+
+# Игнорируем файлы
+.env
+*.log
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+blog.db
